@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Don Recheo - Pedido Online</title>
+<style>
+  /* Base visual inspirado no seu layout, otimizado para iPhone */
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial;
+    background:#4b0f0f;
+    color:#f2e2b8;
+    -webkit-font-smoothing:antialiased;
+    -webkit-text-size-adjust:100%;
+    padding:16px;
+  }
+
+  .container{
+    max-width:720px;
+    margin:0 auto;
+    background:#5c1212;
+    padding:18px;
+    border-radius:14px;
+    border:2px solid #d4b679;
+    box-shadow:0 8px 30px rgba(0,0,0,0.45);
+  }
+
+  .logo{
+    text-align:center;
+    color:#d4b679;
+    font-weight:900;
+    font-size:28px;
+    margin-bottom:8px;
+    text-shadow:0 0 8px rgba(0,0,0,0.5);
+  }
+  h1{font-size:18px;margin:6px 0 18px;text-align:center;color:#fff4d9}
+  form{width:100%}
+
+  label{display:block;font-weight:700;margin-bottom:6px;font-size:14px;color:#fff4d9}
+  .field{margin-bottom:12px}
+
+  input[type="text"], input[type="tel"], input[type="date"], input[type="number"], select, textarea{
+    width:100%;
+    padding:12px 14px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    font-weight:700;
+    color:#4b0f0f;
+    background:#fff4d9;
+    -webkit-appearance:none;
+    appearance:none;
+    outline: none;
+  }
+
+  textarea{min-height:80px;resize:vertical;padding-top:10px;font-weight:600}
+
+  /* select native arrow better for iOS */
+  select{ background-image: linear-gradient(45deg, transparent 50%, #4b0f0f 50%), linear-gradient(135deg, #4b0f0f 50%, transparent 50%); background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px); background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding-right:36px; }
+
+  /* grid de sabores visual */
+  .sabores-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+  }
+  @media (max-width:520px){ .sabores-grid{ grid-template-columns: 1fr; } }
+
+  .sabor-block{
+    background: #5c1212;
+    padding:6px;
+    border-radius:10px;
+    color:#f2e2b8;
+    min-height:60px;
+    border:1px solid #f2e2b8;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+  }
+  .sabor-block h4{margin:0 0 8px;font-size:15px;font-weight:900}
+  .sabor-list{display:flex; flex-direction:column; gap:6px}
+  .sabor-item{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px}
+  .sabor-item input[type="radio"]{width:20px;height:20px; accent-color:#d4b679}
+
+  /* botão principal */
+  .btn{
+    display:inline-block;
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:0;
+    font-weight:900;
+    font-size:18px;
+    color:#4b0f0f;
+    background:#d4b679;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .btn:disabled{opacity:0.6; cursor:default}
+
+  .status{
+    margin-top:12px;
+    font-weight:700;
+    color:#fff4d9;
+    min-height:20px;
+  }
+
+  /* overlay confirm modal (fallback próprio, compatível iOS) */
+  #confirmBox{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    z-index:9999;
+  }
+  #confirmContent{
+    width:100%;
+    max-width:520px;
+    background:#fff4d9;
+    color:#4b0f0f;
+    border-radius:12px;
+    padding:16px;
+    font-weight:700;
+  }
+  #confirmText{font-size:15px; line-height:1.4}
+  .confirm-actions{display:flex; gap:10px; margin-top:14px}
+  .confirm-actions button{flex:1;padding:12px;border-radius:10px;border:0;font-weight:900}
+  .btn-secondary{background:#cfcfcf}
+  .btn-primary{background:#d4b679;color:#4b0f0f}
+
+  .product-highlight{box-shadow:0 6px 16px rgba(0,0,0,0.18); border:2px solid rgba(0,0,0,0.06)}
+
+  /* success box */
+  .success{display:none;background:rgba(0,128,0,0.9);color:#fff;padding:12px;border-radius:10px;text-align:center;margin-top:12px;font-weight:900}
+
+  /* small helpers */
+  .muted{color:#fff4d9;opacity:0.9;font-weight:600;font-size:14px}
+</style>
+</head>
+<body>
+<div class="container" role="main">
+  <div class="logo">DON RECHEO</div>
+  <h1>Faça seu pedido</h1>
+
+  <form id="pedidoForm" autocomplete="off" novalidate>
+    <div class="field">
+      <label for="nome">Nome</label>
+      <input id="nome" name="nome" type="text" placeholder="Seu nome" required />
+    </div>
+
+    <div class="field">
+      <label for="telefone">Telefone</label>
+      <input id="telefone" name="telefone" type="tel" placeholder="(DDD) 90000-0000" required />
+    </div>
+
+    <div class="field">
+      <label for="dataRetirada">Data de retirada</label>
+      <input id="dataRetirada" name="dataRetirada" type="date" required />
+    </div>
+
+    <div class="field">
+      <label for="produto">Produto</label>
+      <select id="produto" name="produto" required>
+        <option value="">Selecione…</option>
+        <option value="torta">Torta Cremosa</option>
+        <option value="empada">Empada</option>
+        <option value="empadao">Empadão</option>
+        <option value="bolo">Bolo Caseiro</option>
+        <option value="batata">Batata Recheada Cremosa</option>
+        <option value="doces">Doces</option>
+      </select>
+    </div>
+
+    <!-- SELECT PRE-CARREGADO COM TODOS OS SABORES (NUNCA MODIFICAR OPÇÕES VIA JS APÓS O LOAD) -->
+    <div class="field" aria-hidden="false">
+      <label for="saborSelect">Sabor (seleção principal - compatível iOS)</label>
+      <select id="saborSelect" name="sabor" required>
+        <option value="">-- Escolha o sabor --</option>
+        <!-- Lista unificada de sabores (extraída dos blocos) -->
+        <option value="Frango">Frango</option>
+        <option value="Carne">Carne</option>
+        <option value="Frios">Frios</option>
+        <option value="Calabresa">Calabresa</option>
+        <option value="Frango com requeijão">Frango com requeijão</option>
+        <option value="Presunto e queijo">Presunto e queijo</option>
+        <option value="Calabresa com requeijão">Calabresa com requeijão</option>
+        <option value="Palmito com requeijão">Palmito com requeijão</option>
+        <option value="Carne seca com requeijão">Carne seca com requeijão</option>
+        <option value="Laranja">Laranja</option>
+        <option value="Fubá">Fubá</option>
+        <option value="Cenoura">Cenoura</option>
+        <option value="Chocolate">Chocolate</option>
+        <option value="Fubá com queijo">Fubá com queijo</option>
+        <option value="Milho">Milho</option>
+        <option value="Strogonoff de frango">Strogonoff de frango</option>
+        <option value="Calabresa com queijo">Calabresa com queijo</option>
+        <option value="Carne seca">Carne seca</option>
+        <option value="Bacon com brócolis">Bacon com brócolis</option>
+        <option value="Strogonoff de carne">Strogonoff de carne</option>
+        <option value="Pizza">Pizza</option>
+        <option value="Pudim">Pudim</option>
+        <option value="Brownie">Brownie</option>
+        <!-- Se precisar adicionar novos sabores, adicione aqui - não via JS após load -->
+      </select>
+      <div class="muted" style="margin-top:6px;font-size:13px">Se preferir, escolha o sabor pelos blocos visuais abaixo — isso sincroniza com o campo acima.</div>
+    </div>
+
+    <!-- Blocos visuais de sabores por produto (apenas referência; mantém UX) -->
+    <div class="field">
+      <label>Sabores por produto</label>
+      <div class="sabores-grid" id="saboresGrid" aria-hidden="false"></div>
+    </div>
+
+    <div class="field">
+      <label for="quantidade">Quantidade</label>
+      <input id="quantidade" name="quantidade" type="number" min="1" value="1" required />
+    </div>
+
+    <div class="field">
+      <label for="obs">Observações</label>
+      <textarea id="obs" name="obs" placeholder="Ex.: sem cebola"></textarea>
+    </div>
+
+    <button id="openConfirmBtn" type="button" class="btn">Enviar Pedido</button>
+    <div class="status" id="statusMsg" aria-live="polite"></div>
+    <div class="success" id="successBox">Pedido enviado com sucesso!</div>
+  </form>
+</div>
+
+<!-- Overlay de confirmação -->
+<div id="confirmBox" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div id="confirmContent">
+    <h3 id="confirmTitle" style="margin:0 0 8px">Confirmar Pedido</h3>
+    <div id="confirmText" style="color:#4b0f0f;font-weight:700"></div>
+    <div class="confirm-actions">
+      <button id="editBtn" class="btn-secondary">Editar</button>
+      <button id="confirmSendBtn" class="btn-primary">Confirmar e Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---------- CONFIG ----------
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvA2FuTPGPZd-C6w5ue3XL3In0fSMYdflH0FStsX8GTxdhamPD0Rg-dwb0tOKJVHst/exec';
+
+  // Modelagem de sabores por produto (mantive os valores originais)
+  const saboresPorProduto = {
+    "torta": ["Frango", "Carne", "Frios", "Calabresa"],
+    "empada": ["Frango com requeijão", "Presunto e queijo", "Calabresa com requeijão", "Palmito com requeijão", "Carne seca com requeijão"],
+    "empadao": ["Frango com requeijão", "Presunto e queijo", "Calabresa com requeijão", "Palmito com requeijão", "Carne seca com requeijão"],
+    "bolo": ["Laranja", "Fubá", "Cenoura", "Chocolate", "Fubá com queijo", "Milho"],
+    "batata": ["Strogonoff de frango", "Calabresa com queijo", "Carne seca", "Bacon com brócolis", "Strogonoff de carne", "Pizza"],
+    "doces": ["Pudim", "Brownie"]
+  };
+
+  const produtosOrdem = ["torta","empada","empadao","bolo","batata","doces"];
+
+  // DOM refs
+  const grid = document.getElementById('saboresGrid');
+  const produtoSelect = document.getElementById('produto');
+  const saborSelect = document.getElementById('saborSelect'); // select pré-carregado
+  const form = document.getElementById('pedidoForm');
+  const openConfirmBtn = document.getElementById('openConfirmBtn');
+  const confirmBox = document.getElementById('confirmBox');
+  const confirmText = document.getElementById('confirmText');
+  const editBtn = document.getElementById('editBtn');
+  const confirmSendBtn = document.getElementById('confirmSendBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const successBox = document.getElementById('successBox');
+  const nomeEl = document.getElementById('nome');
+  const telefoneEl = document.getElementById('telefone');
+
+  // Persist nome/telefone localStorage (útil para repetir pedidos)
+  ["nome","telefone"].forEach(id=>{
+    const el = document.getElementById(id);
+    try {
+      const saved = localStorage.getItem(id);
+      if (saved) el.value = saved;
+      el.addEventListener('input', ()=> localStorage.setItem(id, el.value));
+    } catch(e) {
+      // localStorage pode falhar em modos restritos; ignorar
+    }
+  });
+
+  // Monta blocos visuais (apenas leitura) e liga radios para sincronizar com select
+  function montarBlocosSabores(){
+    grid.innerHTML = '';
+    produtosOrdem.forEach(prod=>{
+      const block = document.createElement('div');
+      block.className = 'sabor-block';
+      block.dataset.product = prod;
+
+      const titleMap = {
+        "torta":"Torta Cremosa",
+        "empada":"Empada",
+        "empadao":"Empadão",
+        "bolo":"Bolo Caseiro",
+        "batata":"Batata Recheada Cremosa",
+        "doces":"Doces"
+      };
+      const h = document.createElement('h4');
+      h.textContent = titleMap[prod] || prod;
+      block.appendChild(h);
+
+      const list = document.createElement('div');
+      list.className = 'sabor-list';
+
+      (saboresPorProduto[prod] || []).forEach((sabor, idx)=>{
+        const item = document.createElement('label');
+        item.className = 'sabor-item';
+        // Use label + input to increase touch area on iPhone
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'sabor_radio';
+        radio.value = sabor;
+        radio.id = `sabor_${prod}_${idx}`;
+
+        // When user taps a visual radio, synchronize the main select's value.
+        radio.addEventListener('change', function(){
+          // set the preloaded select value (this does not create/remove options)
+          // If the flavor exists in select, set it; otherwise, leave as is.
+          if (!saborSelect) return;
+          // Try find an option with same value (exact match)
+          const opt = Array.from(saborSelect.options).find(o => o.value === this.value);
+          if (opt) {
+            saborSelect.value = this.value;
+            // For accessibility/UX, ensure produto select highlights product block
+            // (we also highlight on produto change below)
+          } else {
+            // If somehow not present (shouldn't happen), set select to empty and keep radio checked
+            saborSelect.value = '';
+          }
+        });
+
+        // Label text (clicking label toggles radio automatically)
+        const span = document.createElement('span');
+        span.textContent = sabor;
+
+        item.appendChild(radio);
+        item.appendChild(span);
+        list.appendChild(item);
+      });
+
+      block.appendChild(list);
+      grid.appendChild(block);
+    });
+  }
+
+  montarBlocosSabores();
+
+  // Realça bloco do produto selecionado (visual only)
+  produtoSelect.addEventListener('change', function(){
+    const val = this.value;
+    document.querySelectorAll('.sabor-block').forEach(block=>{
+      if (block.dataset.product === val) {
+        block.classList.add('product-highlight');
+      } else {
+        block.classList.remove('product-highlight');
+      }
+    });
+  });
+
+  // Ao alterar o select de sabores manualmente (o select estático), sincronizamos os radios visuais
+  saborSelect.addEventListener('change', function(){
+    const v = this.value;
+    const radios = document.querySelectorAll('input[name="sabor_radio"]');
+    radios.forEach(r => { r.checked = (r.value === v); });
+  });
+
+  // Helper: obtém sabor selecionado (preferência para o select que funciona no iOS)
+  function getSaborSelecionado(){
+    // Primeiro tentamos pelo select (preenchido por default)
+    const sv = saborSelect.value;
+    if (sv) return sv;
+    // Senão, fallback para radio visual (não esperado)
+    const r = document.querySelector('input[name="sabor_radio"]:checked');
+    return r ? r.value : '';
+  }
+
+  // Validação simples antes de abrir confirm
+  function validateBeforeConfirm(){
+    if (!nomeEl.value.trim()){ alert('Informe o nome.'); nomeEl.focus(); return false; }
+    if (!telefoneEl.value.trim()){ alert('Informe o telefone.'); telefoneEl.focus(); return false; }
+    if (!document.getElementById('dataRetirada').value){ alert('Informe a data de retirada.'); document.getElementById('dataRetirada').focus(); return false; }
+    if (!produtoSelect.value){ alert('Escolha um produto.'); produtoSelect.focus(); return false; }
+    if (!getSaborSelecionado()){ alert('Escolha um sabor.'); return false; }
+    if (!document.getElementById('quantidade').value || Number(document.getElementById('quantidade').value) < 1){ alert('Informe uma quantidade válida.'); document.getElementById('quantidade').focus(); return false; }
+    return true;
+  }
+
+  // Abre modal confirm com resumo
+  openConfirmBtn.addEventListener('click', function(){
+    if (!validateBeforeConfirm()) return;
+    const produtoTexto = produtoSelect.options[produtoSelect.selectedIndex]?.text || produtoSelect.value;
+    const resumo = `
+      <div style="margin-bottom:8px"><strong>Nome:</strong> ${escapeHtml(nomeEl.value)}</div>
+      <div style="margin-bottom:8px"><strong>Telefone:</strong> ${escapeHtml(telefoneEl.value)}</div>
+      <div style="margin-bottom:8px"><strong>Data de Retirada:</strong> ${escapeHtml(document.getElementById('dataRetirada').value)}</div>
+      <div style="margin-bottom:8px"><strong>Produto:</strong> ${escapeHtml(produtoTexto)}</div>
+      <div style="margin-bottom:8px"><strong>Sabor:</strong> ${escapeHtml(getSaborSelecionado())}</div>
+      <div style="margin-bottom:8px"><strong>Quantidade:</strong> ${escapeHtml(document.getElementById('quantidade').value)}</div>
+      <div style="margin-bottom:8px"><strong>Obs:</strong> ${escapeHtml(document.getElementById('obs').value || 'Nenhuma')}</div>
+    `;
+    confirmText.innerHTML = resumo;
+    // show overlay
+    confirmBox.style.display = 'flex';
+    // lock scroll (iOS friendly)
+    document.body.style.overflow = 'hidden';
+  });
+
+  // Editar (fechar)
+  editBtn.addEventListener('click', function(){
+    confirmBox.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+
+  // Envio final (botão no modal) - faz o POST para o Apps Script
+  confirmSendBtn.addEventListener('click', async function(){
+    // final validation again
+    if (!validateBeforeConfirm()) return;
+    confirmSendBtn.disabled = true;
+    confirmSendBtn.textContent = 'Enviando...';
+    statusMsg.textContent = 'Enviando...';
+    // build FormData (compatível com seu Apps Script atual)
+    const fd = new FormData();
+    fd.append('nome', nomeEl.value.trim());
+    fd.append('telefone', telefoneEl.value.trim());
+    // seu script anteriormente recebia campo "endereco" como dataRetirada — manter compatibilidade
+    fd.append('endereco', document.getElementById('dataRetirada').value);
+    fd.append('dataRetirada', document.getElementById('dataRetirada').value);
+    fd.append('produto', produtoSelect.options[produtoSelect.selectedIndex]?.text || produtoSelect.value);
+    fd.append('sabor', getSaborSelecionado());
+    fd.append('quantidade', document.getElementById('quantidade').value);
+    fd.append('obs', document.getElementById('obs').value || '');
+
+    try {
+      const resp = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        body: fd,
+        // mode default is 'cors' — Apps Script web app typically accepts it
+      });
+
+      // Try to parse JSON; Apps Script usually returns JSON
+      let respText = await resp.text();
+      let json = null;
+      try { json = JSON.parse(respText); } catch(e){ json = null; }
+
+      if (!resp.ok) {
+        console.error('Resposta não ok', resp.status, respText);
+        throw new Error('Resposta do servidor: ' + resp.status);
+      }
+
+      // Sucesso
+      statusMsg.textContent = 'Pedido enviado com sucesso!';
+      successBox.style.display = 'block';
+
+      // Limpar campos (mantendo nome/telefone salvos localmente)
+      produtoSelect.value = '';
+      saborSelect.value = '';
+      // remover radios checked
+      document.querySelectorAll('input[name="sabor_radio"]').forEach(r => r.checked = false);
+      document.getElementById('dataRetirada').value = '';
+      document.getElementById('quantidade').value = '';
+      document.getElementById('obs').value = '';
+
+      // Fechar overlay
+      confirmBox.style.display = 'none';
+      document.body.style.overflow = '';
+
+      // Re-enable after short delay
+      setTimeout(()=> { successBox.style.display = 'none'; statusMsg.textContent = ''; }, 3500);
+
+    } catch (err) {
+      console.error('Erro no envio:', err);
+      statusMsg.textContent = 'Erro ao enviar. Tente novamente.';
+      alert('Erro ao enviar o pedido. Verifique a conexão e tente novamente.');
+    } finally {
+      confirmSendBtn.disabled = false;
+      confirmSendBtn.textContent = 'Confirmar e Enviar';
+      document.body.style.overflow = '';
+    }
+  });
+
+  // Escutar toques nos blocos (melhora acessibilidade): clicar no título do bloco não altera select,
+  // mas podemos permitir que tocar no nome destaque o produto
+  document.addEventListener('click', function(e){
+    const block = e.target.closest('.sabor-block');
+    if (block && block.dataset.product){
+      // selecionar produto no select (visual only)
+      produtoSelect.value = block.dataset.product;
+      // highlight handled by change event on produtoSelect
+      produtoSelect.dispatchEvent(new Event('change'));
+    }
+  });
+
+  // Pequena função de escape (para inserir texto seguro no HTML)
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
+
+  // On load: ensure no dynamic modification of saborSelect's options occurs elsewhere.
+  // (This is a guard: we won't add/remove options via JS).
+  // Sincronizar radios com select atual (caso localStorage preencha)
+  (function initialSync(){
+    const v = saborSelect.value;
+    if (v){
+      document.querySelectorAll('input[name="sabor_radio"]').forEach(r => { r.checked = (r.value === v); });
+    }
+  })();
+
+  // Accessibility: allow closing confirm overlay with Escape key
+  window.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && confirmBox.style.display === 'flex'){
+      confirmBox.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
